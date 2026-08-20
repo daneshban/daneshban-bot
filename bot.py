@@ -1,205 +1,630 @@
-import logging, random
-from html import escape
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
+# -*- coding: utf-8 -*-
+
+import logging
+
+from telegram import (
+    InlineKeyboardButton,
+    InlineKeyboardMarkup,
+    Update,
+)
+
 from telegram.constants import ParseMode
-from telegram.ext import Application, ApplicationBuilder, CallbackQueryHandler, CommandHandler, ContextTypes
+
+from telegram.ext import (
+    Application,
+    ApplicationBuilder,
+    CallbackQueryHandler,
+    CommandHandler,
+    ContextTypes,
+)
+
 from config import BOT_TOKEN
 
-logging.basicConfig(format="%(asctime)s | %(levelname)s | %(name)s | %(message)s", level=logging.INFO)
+from handlers.commerce import (
+    show_commerce,
+    show_category as show_commerce_category,
+    show_lesson as show_commerce_lesson,
+    start_quiz as start_commerce_quiz,
+    answer_quiz as answer_commerce_quiz,
+)
+
+
+# =========================================================
+# LOGGING
+# =========================================================
+
+logging.basicConfig(
+    format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
+    level=logging.INFO,
+)
+
 logger = logging.getLogger("daneshban")
 
-CATS = {
-    "banking": ("🏦 بانکداری", [
-        ("🏦 مبانی بانکداری", "بانک به عنوان واسطه مالی منابع را تجهیز و به متقاضیان تخصیص می‌دهد."),
-        ("💳 سپرده‌ها", "سپرده‌ها از مهم‌ترین منابع بانک هستند و از نظر سررسید، نقدشوندگی و هزینه منابع بررسی می‌شوند."),
-        ("💰 تسهیلات", "در تحلیل تسهیلات باید هدف تأمین مالی، توان بازپرداخت، وثایق و ریسک اعتباری بررسی شود."),
-        ("🛡️ مدیریت ریسک", "ریسک اعتباری، بازار، نقدینگی و عملیاتی از حوزه‌های مهم مدیریت ریسک بانکی هستند."),
-    ]),
-    "commerce": ("🌍 تجارت و بازرگانی", [
-        ("🌐 مبانی تجارت بین‌الملل", "تجارت بین‌الملل تحت تأثیر نرخ ارز، هزینه حمل، مقررات، ریسک کشور و شرایط پرداخت است."),
-        ("📦 اینکوترمز", "اینکوترمز برخی مسئولیت‌ها، هزینه‌ها و ریسک‌های تحویل کالا را میان فروشنده و خریدار مشخص می‌کند."),
-        ("💳 پرداخت بین‌المللی", "پیش‌پرداخت، حساب باز، وصول اسنادی و اعتبار اسنادی از روش‌های رایج پرداخت هستند."),
-        ("🔗 زنجیره تأمین", "مدیریت زنجیره تأمین جریان کالا، اطلاعات و منابع را از تأمین‌کننده تا مشتری هماهنگ می‌کند."),
-    ]),
-    "management": ("📊 مدیریت", [
-        ("🧭 اصول مدیریت", "برنامه‌ریزی، سازماندهی، رهبری و کنترل از کارکردهای اصلی مدیریت هستند."),
-        ("🎯 برنامه‌ریزی", "برنامه‌ریزی مسیر رسیدن از وضعیت موجود به وضعیت مطلوب را مشخص می‌کند."),
-        ("🧠 تصمیم‌گیری", "تصمیم‌گیری شامل شناسایی مسئله، بررسی گزینه‌ها، انتخاب، اجرا و ارزیابی است."),
-        ("📈 کنترل", "کنترل با مقایسه عملکرد واقعی و اهداف، انحراف‌ها را شناسایی و اصلاح می‌کند."),
-    ]),
-    "economy": ("💰 اقتصاد و بازار", [
-        ("📉 تورم", "تورم به افزایش عمومی و مستمر سطح قیمت‌ها گفته می‌شود."),
-        ("💱 نرخ ارز", "نرخ ارز ارزش یک پول در برابر پول دیگر است و از عوامل اقتصادی و انتظارات اثر می‌پذیرد."),
-        ("🏦 سیاست پولی", "سیاست پولی مجموعه اقدامات بانک مرکزی برای اثرگذاری بر شرایط پولی و مالی اقتصاد است."),
-        ("📊 عرضه و تقاضا", "تعامل عرضه و تقاضا یکی از چارچوب‌های پایه تحلیل قیمت و مقدار در بازار است."),
-    ]),
-    "marketing": ("📈 بازاریابی و فروش", [
-        ("🎯 STP", "STP شامل بخش‌بندی بازار، انتخاب بازار هدف و جایگاه‌یابی است."),
-        ("4️⃣ 4P", "مدل کلاسیک 4P شامل Product، Price، Place و Promotion است."),
-        ("🧠 رفتار مشتری", "شناخت نیاز، انگیزه و فرآیند تصمیم مشتری برای طراحی پیشنهاد ارزش ضروری است."),
-        ("🛒 قیف فروش", "قیف فروش مسیر حرکت مخاطب از آگاهی و علاقه تا تصمیم و خرید را نشان می‌دهد."),
-    ]),
-}
 
-QUESTIONS = {
-    "banking": [
-        ("کدام مورد نقدشوندگی بالاتری دارد؟", ["وجه نقد","ملک","دارایی ثابت","کالای انبار"], 0, "وجه نقد سریع‌ترین شکل دارایی برای پرداخت است."),
-        ("هدف اصلی اعتبارسنجی چیست؟", ["تبلیغات","برآورد توان بازپرداخت","تغییر نرخ ارز","طراحی شعبه"], 1, "اعتبارسنجی برای سنجش ریسک و توان بازپرداخت انجام می‌شود."),
-        ("ریسک اعتباری با چه چیزی مرتبط است؟", ["عدم ایفای تعهد","رنگ لوگو","تبلیغات","طراحی محصول"], 0, "احتمال عدم ایفای تعهدات مالی، ریسک اعتباری ایجاد می‌کند."),
-    ],
-    "commerce": [
-        ("اینکوترمز بیشتر چه چیزی را مشخص می‌کند؟", ["مسئولیت و ریسک تحویل","حقوق کارکنان","مالیات درآمد","ثبت برند"], 0, "اینکوترمز قواعدی درباره تحویل، هزینه و ریسک ارائه می‌کند."),
-        ("سند رایج حمل دریایی چیست؟", ["بارنامه دریایی","شناسنامه","فیش حقوقی","کارت بانکی"], 0, "Bill of Lading از اسناد اصلی حمل دریایی است."),
-        ("SCM بر چه چیزی تمرکز دارد؟", ["هماهنگی جریان کالا و اطلاعات","فقط تبلیغات","فقط استخدام","فقط حسابداری"], 0, "مدیریت زنجیره تأمین جریان کالا، اطلاعات و منابع را هماهنگ می‌کند."),
-    ],
-    "management": [
-        ("کدام مورد وظیفه اصلی مدیریت است؟", ["برنامه‌ریزی","تفریح","خرید شخصی","طراحی شخصی"], 0, "برنامه‌ریزی یکی از کارکردهای اصلی مدیریت است."),
-        ("کنترل مدیریتی برای چیست؟", ["مقایسه عملکرد با اهداف","افزایش هزینه","تغییر نام","حذف برنامه"], 0, "کنترل برای شناسایی انحراف از اهداف و اصلاح آن است."),
-        ("تصمیم‌گیری یعنی چه؟", ["انتخاب میان گزینه‌ها","فقط تبلیغات","فقط فروش","فقط حسابداری"], 0, "تصمیم‌گیری فرآیند انتخاب گزینه مناسب است."),
-    ],
-    "economy": [
-        ("تورم چیست؟", ["افزایش عمومی و مستمر قیمت‌ها","کاهش جمعیت","افزایش صادرات فقط","کاهش یک کالا"], 0, "تورم افزایش عمومی و مستمر سطح قیمت‌هاست."),
-        ("افزایش نرخ بهره معمولاً چه اثری بر تقاضای وام دارد؟", ["کاهش","دو برابر","بی‌اثر","صفر"], 0, "افزایش هزینه تأمین مالی معمولاً تقاضای وام را کاهش می‌دهد."),
-        ("عرضه و تقاضا برای تحلیل چیست؟", ["قیمت و مقدار بازار","رنگ سازمانی","استخدام","طراحی سایت"], 0, "عرضه و تقاضا چارچوب پایه تحلیل بازار است."),
-    ],
-    "marketing": [
-        ("STP شامل چیست؟", ["بخش‌بندی، هدف‌گیری، جایگاه‌یابی","فروش، مالیات، تولید","حمل، بیمه، گمرک","حقوق، دستمزد، مالیات"], 0, "STP مخفف Segmentation, Targeting, Positioning است."),
-        ("کدام مورد یکی از 4P است؟", ["Product","Payroll","Passport","Personnel"], 0, "Product، Price، Place و Promotion چهار عنصر کلاسیک هستند."),
-        ("قیف فروش چه چیزی را نشان می‌دهد؟", ["مسیر تبدیل مخاطب به مشتری","مالیات","حمل کالا","ثبت شرکت"], 0, "قیف فروش مراحل حرکت مشتری تا خرید را نشان می‌دهد."),
-    ],
-}
+# =========================================================
+# WELCOME TEXT
+# =========================================================
 
-WELCOME = """<b>🎓 به دانش‌بان خوش آمدید</b>
+WELCOME_TEXT = """
+<b>🎓 به دانش‌بان خوش آمدید</b>
 
 <b>دانش را به مهارت تبدیل کن.</b> 🚀
 
-یک پلتفرم تخصصی برای یادگیری، تمرین و سنجش مهارت در:
+دانش‌بان یک پلتفرم تخصصی برای یادگیری، تمرین و سنجش مهارت است.
+
+<b>🎓 مسیرهای آموزشی دانش‌بان:</b>
+
 🏦 بانکداری
 🌍 تجارت و بازرگانی
 📊 مدیریت
 💰 اقتصاد و بازار
 📈 بازاریابی و فروش
+🧠 مددکاری اجتماعی و روانشناسی
+
+<b>🎯 مسیرهای سنجش:</b>
+
+🎯 آزمون‌های تخصصی
 🏆 آزمون‌های استخدامی
+📈 تحلیل عملکرد
+🏅 سطح‌بندی و امتیاز
 
-از منوی زیر شروع کن 👇"""
+<b>📚 امکانات:</b>
 
-def home():
-    return InlineKeyboardMarkup([
-        [InlineKeyboardButton("📚 آموزش تخصصی", callback_data="education"), InlineKeyboardButton("🎯 آزمون و تست", callback_data="exams")],
-        [InlineKeyboardButton("🏦 بانکداری", callback_data="learn:banking"), InlineKeyboardButton("🌍 تجارت و بازرگانی", callback_data="learn:commerce")],
-        [InlineKeyboardButton("📊 مدیریت", callback_data="learn:management"), InlineKeyboardButton("💰 اقتصاد و بازار", callback_data="learn:economy")],
-        [InlineKeyboardButton("📈 بازاریابی و فروش", callback_data="learn:marketing"), InlineKeyboardButton("🏆 آزمون استخدامی", callback_data="employment")],
-        [InlineKeyboardButton("📂 جزوات و PDF", callback_data="pdf"), InlineKeyboardButton("📈 کارنامه من", callback_data="performance")],
-        [InlineKeyboardButton("👤 پروفایل", callback_data="profile"), InlineKeyboardButton("🤝 پشتیبانی", callback_data="support")],
-    ])
+📖 آموزش تخصصی
+📝 آزمون و تست
+📂 جزوات و PDF
+👤 پروفایل
+📊 کارنامه
 
-def back():
-    return InlineKeyboardMarkup([[InlineKeyboardButton("🏠 منوی اصلی", callback_data="home")]])
+از منوی زیر مسیر موردنظر خودت را انتخاب کن.
+"""
 
-def category_menu():
-    return InlineKeyboardMarkup([
-        [InlineKeyboardButton(CATS[k][0], callback_data=f"quiz:{k}")] for k in CATS
-    ] + [[InlineKeyboardButton("🏠 منوی اصلی", callback_data="home")]])
 
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.effective_message.reply_text(WELCOME, parse_mode=ParseMode.HTML, reply_markup=home())
+# =========================================================
+# MAIN MENU
+# =========================================================
 
-async def show_learning(q, key):
-    title, lessons = CATS[key]
-    rows = [[InlineKeyboardButton(title, callback_data="noop")]]
-    for name, lesson_key in lessons:
-        rows.append([InlineKeyboardButton(name, callback_data=f"lesson:{key}:{lesson_key}")])
-    rows += [[InlineKeyboardButton("🎯 آزمون این حوزه", callback_data=f"quiz:{key}")],
-             [InlineKeyboardButton("🏠 منوی اصلی", callback_data="home")]]
-    await q.edit_message_text(
-        f"<b>{title}</b>\n\n{CATS[key][1][0][1]}\n\nمبحث موردنظر را انتخاب کن:",
-        parse_mode=ParseMode.HTML, reply_markup=InlineKeyboardMarkup(rows)
+def main_menu_keyboard() -> InlineKeyboardMarkup:
+
+    keyboard = [
+
+        [
+            InlineKeyboardButton(
+                "📚 آموزش تخصصی",
+                callback_data="education",
+            ),
+
+            InlineKeyboardButton(
+                "🎯 آزمون و تست",
+                callback_data="exams",
+            ),
+        ],
+
+        [
+            InlineKeyboardButton(
+                "🏦 بانکداری",
+                callback_data="banking",
+            ),
+
+            InlineKeyboardButton(
+                "🌍 تجارت و بازرگانی",
+                callback_data="commerce",
+            ),
+        ],
+
+        [
+            InlineKeyboardButton(
+                "📊 مدیریت",
+                callback_data="management",
+            ),
+
+            InlineKeyboardButton(
+                "💰 اقتصاد و بازار",
+                callback_data="economy",
+            ),
+        ],
+
+        [
+            InlineKeyboardButton(
+                "📈 بازاریابی و فروش",
+                callback_data="marketing",
+            ),
+
+            InlineKeyboardButton(
+                "🏆 آزمون استخدامی",
+                callback_data="employment",
+            ),
+        ],
+
+        [
+            InlineKeyboardButton(
+                "🧠 مددکاری اجتماعی و روانشناسی",
+                callback_data="social_psychology",
+            ),
+        ],
+
+        [
+            InlineKeyboardButton(
+                "📂 جزوات و PDF",
+                callback_data="pdf",
+            ),
+
+            InlineKeyboardButton(
+                "📈 کارنامه من",
+                callback_data="performance",
+            ),
+        ],
+
+        [
+            InlineKeyboardButton(
+                "👤 پروفایل",
+                callback_data="profile",
+            ),
+
+            InlineKeyboardButton(
+                "🤝 حمایت و پشتیبانی",
+                callback_data="support",
+            ),
+        ],
+    ]
+
+    return InlineKeyboardMarkup(keyboard)
+
+
+# =========================================================
+# SIMPLE BACK BUTTON
+# =========================================================
+
+def home_keyboard() -> InlineKeyboardMarkup:
+
+    return InlineKeyboardMarkup(
+        [
+            [
+                InlineKeyboardButton(
+                    "🏠 منوی اصلی",
+                    callback_data="home",
+                )
+            ]
+        ]
     )
 
-async def send_question(q, context):
-    quiz = context.user_data.get("quiz")
-    if not quiz:
-        await q.edit_message_text("⚠️ آزمون فعال نیست.", reply_markup=back()); return
-    if quiz["i"] >= len(quiz["qs"]):
-        total = len(quiz["qs"]); pct = quiz["correct"] / total * 100
-        await q.edit_message_text(
-            f"<b>🏁 آزمون تمام شد!</b>\n\n✅ صحیح: <b>{quiz['correct']} از {total}</b>\n📊 درصد: <b>{pct:.0f}%</b>\n⭐ امتیاز: <b>{quiz['score']}</b>",
-            parse_mode=ParseMode.HTML, reply_markup=back()
+
+# =========================================================
+# START COMMAND
+# =========================================================
+
+async def start_command(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE,
+) -> None:
+
+    if not update.effective_message:
+        return
+
+    user = update.effective_user
+
+    logger.info(
+        "START | user_id=%s | username=%s",
+        user.id if user else "unknown",
+        user.username if user else "unknown",
+    )
+
+    await update.effective_message.reply_text(
+        WELCOME_TEXT,
+        parse_mode=ParseMode.HTML,
+        reply_markup=main_menu_keyboard(),
+    )
+
+
+# =========================================================
+# HELP COMMAND
+# =========================================================
+
+async def help_command(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE,
+) -> None:
+
+    if not update.effective_message:
+        return
+
+    text = """
+<b>🆘 راهنمای دانش‌بان</b>
+
+دانش‌بان برای یادگیری، تمرین و سنجش مهارت طراحی شده است.
+
+<b>📚 آموزش</b>
+مطالب تخصصی حوزه‌های مختلف.
+
+<b>🎯 آزمون و تست</b>
+آزمون‌های آموزشی و تخصصی.
+
+<b>🏆 آزمون استخدامی</b>
+مسیر آمادگی برای آزمون‌های استخدامی.
+
+<b>📂 جزوات و PDF</b>
+دسترسی به محتوای آموزشی و فایل‌های تخصصی.
+
+<b>📈 کارنامه من</b>
+نمایش عملکرد و نتایج آزمون‌ها.
+
+<b>👤 پروفایل</b>
+اطلاعات حساب و وضعیت کاربر.
+
+<b>🤝 حمایت و پشتیبانی</b>
+ارتباط با پشتیبانی دانش‌بان.
+"""
+
+    await update.effective_message.reply_text(
+        text,
+        parse_mode=ParseMode.HTML,
+        reply_markup=main_menu_keyboard(),
+    )
+
+
+# =========================================================
+# PLACEHOLDER SECTIONS
+# =========================================================
+
+SECTION_NAMES = {
+
+    "education":
+        "📚 آموزش تخصصی",
+
+    "exams":
+        "🎯 آزمون و تست",
+
+    "banking":
+        "🏦 بانکداری",
+
+    "management":
+        "📊 مدیریت",
+
+    "economy":
+        "💰 اقتصاد و بازار",
+
+    "marketing":
+        "📈 بازاریابی و فروش",
+
+    "employment":
+        "🏆 آزمون استخدامی",
+
+    "social_psychology":
+        "🧠 مددکاری اجتماعی و روانشناسی",
+
+    "pdf":
+        "📂 جزوات و PDF",
+
+    "performance":
+        "📈 کارنامه من",
+
+    "profile":
+        "👤 پروفایل",
+
+    "support":
+        "🤝 حمایت و پشتیبانی",
+}
+
+
+# =========================================================
+# PLACEHOLDER HANDLER
+# =========================================================
+
+async def show_placeholder(
+    query,
+    title: str,
+) -> None:
+
+    text = f"""
+<b>{title}</b>
+
+🚧 این بخش در حال توسعه است.
+
+ساختار دانش‌بان به‌صورت ماژولار طراحی شده تا هر بخش مستقل، قابل توسعه و قابل اتصال به سیستم آزمون و تحلیل عملکرد باشد.
+
+<b>🚀 امکاناتی که در نسخه نهایی این بخش قرار می‌گیرد:</b>
+
+📚 آموزش تخصصی
+📝 آزمون
+🎯 تست تصادفی
+⏱ زمان‌سنج
+📊 امتیاز و درصد
+📈 تحلیل عملکرد
+🏅 سطح‌بندی
+📂 فایل و PDF
+💎 محتوای ویژه
+
+<i>دانش‌بان؛ دانش را به مهارت تبدیل کن.</i>
+"""
+
+    await query.edit_message_text(
+        text,
+        parse_mode=ParseMode.HTML,
+        reply_markup=home_keyboard(),
+    )
+
+
+# =========================================================
+# CALLBACK HANDLER
+# =========================================================
+
+async def button_handler(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE,
+) -> None:
+
+    query = update.callback_query
+
+    if query is None:
+        return
+
+    # جلوگیری از Loading ماندن دکمه
+    try:
+        await query.answer()
+    except Exception:
+        pass
+
+    data = query.data
+
+    logger.info(
+        "CALLBACK | user_id=%s | data=%s",
+        query.from_user.id,
+        data,
+    )
+
+    # =====================================================
+    # HOME
+    # =====================================================
+
+    if data == "home":
+
+        await query.edit_message_text(
+            WELCOME_TEXT,
+            parse_mode=ParseMode.HTML,
+            reply_markup=main_menu_keyboard(),
         )
-        context.user_data.pop("quiz", None); return
-    quiz["answered"] = False
-    item = quiz["qs"][quiz["i"]]
-    keys = [[InlineKeyboardButton(f"{n+1}) {x}", callback_data=f"ans:{quiz['i']}:{n}")] for n,x in enumerate(item[1])]
-    keys.append([InlineKeyboardButton("⛔ پایان آزمون", callback_data="cancel")])
-    await q.edit_message_text(
-        f"<b>🎯 {CATS[quiz['cat']][0]}</b>\n\nسوال <b>{quiz['i']+1}</b> از <b>{len(quiz['qs'])}</b>\n\n{item[0]}",
-        parse_mode=ParseMode.HTML, reply_markup=InlineKeyboardMarkup(keys)
+
+        return
+
+    # =====================================================
+    # COMMERCE MODULE
+    # =====================================================
+
+    if data == "commerce":
+
+        await show_commerce(
+            query
+        )
+
+        return
+
+    # -----------------------------------------------------
+    # COMMERCE CATEGORY
+    # -----------------------------------------------------
+
+    if data.startswith("comcat:"):
+
+        key = data.split(
+            ":",
+            1,
+        )[1]
+
+        await show_commerce_category(
+            query,
+            key,
+        )
+
+        return
+
+    # -----------------------------------------------------
+    # COMMERCE LESSON
+    # -----------------------------------------------------
+
+    if data.startswith("comlesson:"):
+
+        parts = data.split(
+            ":",
+            2,
+        )
+
+        if len(parts) != 3:
+
+            await query.edit_message_text(
+                "⚠️ درخواست درس نامعتبر است.",
+                reply_markup=home_keyboard(),
+            )
+
+            return
+
+        key = parts[1]
+
+        lesson_id = parts[2]
+
+        await show_commerce_lesson(
+            query,
+            key,
+            lesson_id,
+        )
+
+        return
+
+    # -----------------------------------------------------
+    # COMMERCE QUIZ
+    # -----------------------------------------------------
+
+    if data == "comquiz:start":
+
+        await start_commerce_quiz(
+            query,
+            context,
+        )
+
+        return
+
+    # -----------------------------------------------------
+    # COMMERCE CATEGORY QUIZ
+    # -----------------------------------------------------
+
+    if data.startswith(
+        "comquiz:category:"
+    ):
+
+        key = data.split(
+            ":",
+            2,
+        )[2]
+
+        await start_commerce_quiz(
+            query,
+            context,
+            key,
+        )
+
+        return
+
+    # -----------------------------------------------------
+    # COMMERCE ANSWER
+    # -----------------------------------------------------
+
+    if data.startswith("comans:"):
+
+        answer_index = data.split(
+            ":",
+            1,
+        )[1]
+
+        await answer_commerce_quiz(
+            query,
+            context,
+            answer_index,
+        )
+
+        return
+
+    # =====================================================
+    # OTHER SECTIONS
+    # =====================================================
+
+    if data in SECTION_NAMES:
+
+        await show_placeholder(
+            query,
+            SECTION_NAMES[data],
+        )
+
+        return
+
+    # =====================================================
+    # UNKNOWN CALLBACK
+    # =====================================================
+
+    logger.warning(
+        "UNKNOWN CALLBACK | user_id=%s | data=%s",
+        query.from_user.id,
+        data,
     )
 
-async def callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    q = update.callback_query
-    await q.answer()
-    d = q.data or ""
-    if d == "home":
-        context.user_data.pop("quiz", None); await q.edit_message_text(WELCOME, parse_mode=ParseMode.HTML, reply_markup=home()); return
-    if d == "noop": return
-    if d == "education":
-        rows = [[InlineKeyboardButton(CATS[k][0], callback_data=f"learn:{k}")] for k in CATS]
-        rows.append([InlineKeyboardButton("🏠 منوی اصلی", callback_data="home")])
-        await q.edit_message_text("<b>📚 آموزش تخصصی</b>\n\nحوزه موردنظر را انتخاب کن:", parse_mode=ParseMode.HTML, reply_markup=InlineKeyboardMarkup(rows)); return
-    if d.startswith("learn:"):
-        await show_learning(q, d.split(":")[1]); return
-    if d.startswith("lesson:"):
-        _, cat, idx = d.split(":")
-        lesson = next((x[1] for x in CATS[cat][1] if x[0] == idx), None)
-        # idx is a compact key in this version; map by position if needed
-        lessons = CATS[cat][1]
-        pos = int(idx) if idx.isdigit() else 0
-        text = lessons[pos][1] if pos < len(lessons) else lessons[0][1]
-        await q.edit_message_text(f"<b>{CATS[cat][0]}</b>\n\n{text}", parse_mode=ParseMode.HTML, reply_markup=back()); return
-    if d == "exams":
-        await q.edit_message_text("<b>🎯 مرکز آزمون دانش‌بان</b>\n\nموضوع آزمون را انتخاب کن:", parse_mode=ParseMode.HTML, reply_markup=category_menu()); return
-    if d.startswith("quiz:"):
-        cat = d.split(":")[1]
-        qs = random.sample(QUESTIONS[cat], min(5, len(QUESTIONS[cat])))
-        context.user_data["quiz"] = {"cat":cat, "qs":qs, "i":0, "correct":0, "score":0, "answered":False}
-        await send_question(q, context); return
-    if d.startswith("ans:"):
-        quiz = context.user_data.get("quiz")
-        if not quiz: await q.answer("آزمون فعال نیست.", show_alert=True); return
-        _, i, opt = d.split(":"); i=int(i); opt=int(opt)
-        if i != quiz["i"] or quiz["answered"]:
-            await q.answer("این سوال دیگر فعال نیست.", show_alert=True); return
-        item = quiz["qs"][i]; quiz["answered"]=True; ok=opt==item[2]
-        if ok: quiz["correct"]+=1; quiz["score"]+=10
-        quiz["i"]+=1
-        result = "✅ <b>پاسخ درست است!</b>" if ok else "❌ <b>پاسخ نادرست است.</b>"
-        await q.edit_message_text(f"{result}\n\n💡 <b>توضیح:</b> {item[3]}\n\n⭐ امتیاز: <b>{quiz['score']}</b>", parse_mode=ParseMode.HTML, reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("➡️ سوال بعدی", callback_data="next")]])); return
-    if d == "next":
-        await send_question(q, context); return
-    if d == "cancel":
-        context.user_data.pop("quiz", None); await q.edit_message_text("⛔ آزمون متوقف شد.", reply_markup=home()); return
-    if d == "employment":
-        await q.edit_message_text("<b>🏆 آزمون استخدامی</b>\n\nاین بخش برای دروس تخصصی، هوش، آزمون جامع و شبیه‌سازی استخدامی طراحی شده است.\n\nدر نسخه بعدی بانک سوالات اختصاصی و منابع رسمی هر آزمون اضافه می‌شود.", parse_mode=ParseMode.HTML, reply_markup=category_menu()); return
-    if d == "pdf":
-        await q.edit_message_text("<b>📂 جزوات و PDF</b>\n\nمنابع رایگان و PDFهای تخصصی پولی در این بخش قرار می‌گیرند.\n\n🔒 پرداخت و تحویل خودکار فایل را بعد از پایدار شدن هسته ربات اضافه می‌کنیم.", parse_mode=ParseMode.HTML, reply_markup=back()); return
-    if d == "support":
-        await q.edit_message_text("<b>🤝 پشتیبانی دانش‌بان</b>\n\nگزارش خطا، پیشنهاد محتوا و درخواست همکاری را می‌توانیم به شناسه پشتیبانی متصل کنیم.", parse_mode=ParseMode.HTML, reply_markup=back()); return
-    if d in ("performance","profile"):
-        await q.edit_message_text("<b>📈 کارنامه و پروفایل</b>\n\nهسته ثبت نتایج در مرحله بعد به‌صورت کامل به پایگاه داده متصل می‌شود.", parse_mode=ParseMode.HTML, reply_markup=back()); return
-    if d.startswith("learn:"): return
-    await q.edit_message_text("⚠️ گزینه معتبر نیست.", reply_markup=back())
+    await query.edit_message_text(
+        """
+⚠️ این گزینه معتبر نیست.
 
-async def error_handler(update, context):
-    logger.exception("Unhandled error", exc_info=context.error)
+لطفاً از منوی اصلی ادامه بده.
+""",
+        reply_markup=home_keyboard(),
+    )
 
-def main():
-    app = ApplicationBuilder().token(BOT_TOKEN).build()
-    app.add_handler(CommandHandler("start", start))
-    app.add_handler(CommandHandler("help", start))
-    app.add_handler(CallbackQueryHandler(callback))
-    app.add_error_handler(error_handler)
-    app.run_polling(allowed_updates=Update.ALL_TYPES, drop_pending_updates=True)
+
+# =========================================================
+# ERROR HANDLER
+# =========================================================
+
+async def error_handler(
+    update: object,
+    context: ContextTypes.DEFAULT_TYPE,
+) -> None:
+
+    logger.error(
+        "Unhandled exception",
+        exc_info=context.error,
+    )
+
+
+# =========================================================
+# APPLICATION
+# =========================================================
+
+def create_application() -> Application:
+
+    application = (
+        ApplicationBuilder()
+        .token(BOT_TOKEN)
+        .build()
+    )
+
+    # -----------------------------------------------------
+    # COMMANDS
+    # -----------------------------------------------------
+
+    application.add_handler(
+        CommandHandler(
+            "start",
+            start_command,
+        )
+    )
+
+    application.add_handler(
+        CommandHandler(
+            "help",
+            help_command,
+        )
+    )
+
+    # -----------------------------------------------------
+    # CALLBACKS
+    # -----------------------------------------------------
+
+    application.add_handler(
+        CallbackQueryHandler(
+            button_handler
+        )
+    )
+
+    # -----------------------------------------------------
+    # ERROR HANDLER
+    # -----------------------------------------------------
+
+    application.add_error_handler(
+        error_handler
+    )
+
+    return application
+
+
+# =========================================================
+# MAIN
+# =========================================================
+
+def main() -> None:
+
+    logger.info(
+        "Starting Daneshban bot..."
+    )
+
+    application = create_application()
+
+    application.run_polling(
+        allowed_updates=Update.ALL_TYPES,
+
+        # پیام‌های قدیمی Telegram
+        # بعد از Deploy دوباره پردازش نمی‌شوند
+        drop_pending_updates=True,
+    )
+
+
+# =========================================================
+# RUN
+# =========================================================
 
 if __name__ == "__main__":
+
     main()
