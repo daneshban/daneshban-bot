@@ -1,667 +1,665 @@
 # -*- coding: utf-8 -*-
 
-# =========================================================
-# DANESHBAN
-# COMMERCE CONTENT
-# =========================================================
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+from telegram.constants import ParseMode
 
-COMMERCE = {
-
-    "fundamentals": {
-        "title": "📘 مبانی تجارت و بازرگانی",
-
-        "lessons": [
-            ("مفهوم تجارت و بازرگانی", "c01"),
-            ("زنجیره تأمین و نقش بازرگانی", "c02"),
-        ],
-    },
-
-    "international": {
-        "title": "🌐 تجارت بین‌الملل",
-
-        "lessons": [
-            ("مفهوم تجارت بین‌الملل", "c11"),
-            ("مزیت نسبی و تخصص", "c12"),
-        ],
-    },
-
-    "incoterms": {
-        "title": "📑 اینکوترمز",
-
-        "lessons": [
-            ("اینکوترمز چیست؟", "c21"),
-            ("اینکوترمز 2020", "c22"),
-        ],
-    },
-
-    "logistics": {
-        "title": "🚢 حمل‌ونقل و لجستیک",
-
-        "lessons": [
-            ("مبانی لجستیک تجارت", "c31"),
-            ("انتخاب شیوه حمل", "c32"),
-        ],
-    },
-
-    "payments": {
-        "title": "💳 روش‌های پرداخت بین‌المللی",
-
-        "lessons": [
-            ("مبانی پرداخت تجاری", "c41"),
-            ("اعتبار اسنادی", "c42"),
-        ],
-    },
-
-    "finance": {
-        "title": "🏦 تأمین مالی تجارت",
-
-        "lessons": [
-            ("مفهوم تأمین مالی تجارت", "c51"),
-            ("ریسک تأمین مالی تجارت", "c52"),
-        ],
-    },
-
-    "export": {
-        "title": "📦 صادرات",
-
-        "lessons": [
-            ("مراحل مقدماتی صادرات", "c61"),
-        ],
-    },
-
-    "import": {
-        "title": "📥 واردات",
-
-        "lessons": [
-            ("مراحل مقدماتی واردات", "c71"),
-        ],
-    },
-
-    "documents": {
-        "title": "🧾 اسناد تجاری",
-
-        "lessons": [
-            ("اسناد حمل و اسناد تجاری", "c81"),
-        ],
-    },
-
-    "risk": {
-        "title": "⚠️ ریسک تجارت بین‌الملل",
-
-        "lessons": [
-            ("انواع ریسک تجارت بین‌الملل", "c91"),
-        ],
-    },
-}
+from content.commerce import (
+    COMMERCE,
+    LESSONS,
+    QUIZ,
+)
 
 
 # =========================================================
-# LESSONS
+# COMMERCE MAIN MENU
 # =========================================================
 
-LESSONS = {
+def commerce_menu() -> InlineKeyboardMarkup:
 
-    "c01": """
-<b>📘 مفهوم تجارت و بازرگانی</b>
+    keyboard = []
 
-<b>🎯 هدف یادگیری</b>
+    for key, section in COMMERCE.items():
 
-شناخت مفهوم تجارت، بازرگانی و نقش آن در جریان کالا، خدمات، پول، اطلاعات و اسناد.
+        keyboard.append([
+            InlineKeyboardButton(
+                section["title"],
+                callback_data=f"comcat:{key}",
+            )
+        ])
 
-<b>📚 آموزش</b>
+    keyboard.append([
+        InlineKeyboardButton(
+            "🎯 آزمون جامع تجارت",
+            callback_data="comquiz:start",
+        )
+    ])
 
-بازرگانی فقط خرید و فروش کالا نیست.
+    keyboard.append([
+        InlineKeyboardButton(
+            "🏠 منوی اصلی",
+            callback_data="home",
+        )
+    ])
 
-در یک فعالیت بازرگانی حرفه‌ای موضوعاتی مانند:
+    return InlineKeyboardMarkup(keyboard)
 
-• شناسایی بازار
-• انتخاب تأمین‌کننده
-• مذاکره
-• قرارداد
-• قیمت‌گذاری
-• پرداخت
-• حمل
-• بیمه
-• اسناد
-• مقررات
-• مدیریت ریسک
 
-اهمیت دارند.
+# =========================================================
+# CATEGORY MENU
+# =========================================================
 
-<b>💡 مثال</b>
+def category_menu(key: str) -> InlineKeyboardMarkup:
 
-فرض کنیم یک شرکت ایرانی قصد خرید مواد اولیه از یک شرکت خارجی را دارد.
+    section = COMMERCE.get(key)
 
-قیمت کالا تنها یکی از عوامل تصمیم‌گیری است.
+    if not section:
+        return commerce_menu()
 
-شرکت باید مواردی مانند:
+    keyboard = []
 
-• هزینه حمل
-• روش پرداخت
-• شرایط تحویل
-• زمان تحویل
-• اسناد
-• ریسک طرف معامله
-• نوسان نرخ ارز
+    for lesson_title, lesson_id in section["lessons"]:
 
-را نیز بررسی کند.
+        keyboard.append([
+            InlineKeyboardButton(
+                f"📖 {lesson_title}",
+                callback_data=f"comlesson:{key}:{lesson_id}",
+            )
+        ])
 
-<b>📝 نکته آزمونی</b>
+    keyboard.append([
+        InlineKeyboardButton(
+            "🎯 آزمون این بخش",
+            callback_data=f"comquiz:category:{key}",
+        )
+    ])
 
-تجارت حرفه‌ای یعنی مدیریت هم‌زمان:
+    keyboard.append([
+        InlineKeyboardButton(
+            "⬅️ تجارت و بازرگانی",
+            callback_data="commerce",
+        )
+    ])
 
-<b>کالا + پول + اطلاعات + اسناد + ریسک</b>
-""",
+    keyboard.append([
+        InlineKeyboardButton(
+            "🏠 منوی اصلی",
+            callback_data="home",
+        )
+    ])
 
-    "c02": """
-<b>📘 زنجیره تأمین و نقش بازرگانی</b>
+    return InlineKeyboardMarkup(keyboard)
 
-زنجیره تأمین مجموعه‌ای از تأمین‌کنندگان، تولیدکنندگان، انبارها، حمل‌کنندگان، توزیع‌کنندگان و مشتریان است.
 
-<b>🔗 اجزای مهم</b>
+# =========================================================
+# SHOW COMMERCE
+# =========================================================
 
-تأمین → تولید → انبارش → حمل → توزیع → مشتری
+async def show_commerce(query):
 
-<b>🎯 نکته مدیریتی</b>
+    text = """
+<b>🌍 آکادمی تجارت و بازرگانی دانش‌بان</b>
 
-کمترین قیمت خرید الزاماً به معنی کمترین هزینه نهایی نیست.
+به بخش تخصصی تجارت و بازرگانی خوش آمدی. 🚀
 
-هزینه‌های زیر نیز باید بررسی شوند:
+در این بخش می‌توانی مسیرهای آموزشی زیر را دنبال کنی:
 
-• حمل
-• انبارداری
-• موجودی
-• تأخیر
-• کیفیت
-• ضایعات
-• ریسک
+📘 مبانی تجارت و بازرگانی
+🌐 تجارت بین‌الملل
+📑 اینکوترمز
+🚢 حمل‌ونقل و لجستیک
+💳 روش‌های پرداخت
+🏦 تأمین مالی تجارت
+📦 صادرات
+📥 واردات
+🧾 اسناد تجاری
+⚠️ مدیریت ریسک
 
-<b>🧠 نکته آزمونی</b>
+همچنین می‌توانی در آزمون‌های تخصصی شرکت کنی.
 
-تصمیم بازرگانی باید بر اساس <b>هزینه کل</b> و نه فقط قیمت خرید اتخاذ شود.
-""",
+<b>🎯 هدف دانش‌بان:</b>
 
-    "c11": """
-<b>🌐 مفهوم تجارت بین‌الملل</b>
-
-تجارت بین‌الملل به مبادله کالا و خدمات میان اشخاص، شرکت‌ها یا اقتصادهای مستقر در کشورهای مختلف گفته می‌شود.
-
-<b>📌 عوامل مؤثر</b>
-
-• نرخ ارز
-• تعرفه‌ها
-• مقررات
-• استانداردها
-• هزینه حمل
-• شرایط سیاسی
-• ریسک کشور
-• ریسک طرف معامله
-
-<b>🎯 نکته</b>
-
-تحلیل یک معامله بین‌المللی باید هم اقتصاد معامله و هم ریسک و مقررات آن را بررسی کند.
-""",
-
-    "c12": """
-<b>🌐 مزیت نسبی و تخصص</b>
-
-مزیت نسبی یکی از مفاهیم مهم اقتصاد بین‌الملل است.
-
-مبنای اصلی مزیت نسبی:
-
-<b>هزینه فرصت</b>
-
-است.
-
-یعنی یک کشور یا بنگاه ممکن است در تولید چند محصول توانمند باشد، اما در فعالیتی که هزینه فرصت پایین‌تری دارد، مزیت نسبی بیشتری داشته باشد.
-
-<b>📝 نکته آزمونی</b>
-
-مزیت نسبی با مزیت مطلق یکسان نیست.
-
-معیار کلیدی مزیت نسبی:
-
-<b>هزینه فرصت</b>
-""",
-
-    "c21": """
-<b>📑 اینکوترمز چیست؟</b>
-
-Incoterms® مجموعه‌ای از قواعد استاندارد اتاق بازرگانی بین‌المللی (ICC) برای تفسیر برخی اصطلاحات تجاری در قراردادهای فروش کالا است.
-
-این قواعد به مشخص‌شدن برخی موضوعات مانند:
-
-• وظایف طرفین
-• هزینه‌های مرتبط
-• تحویل
-• انتقال ریسک
-
-کمک می‌کنند.
-
-<b>⚠️ نکته بسیار مهم</b>
-
-اینکوترمز جایگزین قرارداد کامل فروش نیست.
-
-موضوعاتی مانند قیمت، روش پرداخت، مشخصات کالا و بسیاری از شروط قراردادی باید به‌صورت جداگانه تعیین شوند.
-
-<b>📚 منبع مرجع</b>
-
-ICC — Incoterms® 2020
-""",
-
-    "c22": """
-<b>📑 اینکوترمز 2020</b>
-
-قواعد Incoterms® 2020 شامل 11 قاعده است.
-
-انتخاب قاعده مناسب باید با موارد زیر هماهنگ باشد:
-
-• نوع کالا
-• شیوه حمل
-• محل تحویل
-• هزینه‌ها
-• مسئولیت طرفین
-• نقطه انتقال ریسک
-
-<b>🎯 نکته آزمونی</b>
-
-قبل از انتخاب یک قاعده باید مشخص شود:
-
-<b>کجا تحویل انجام می‌شود؟</b>
-
-<b>چه کسی حمل را سازمان‌دهی می‌کند؟</b>
-
-<b>ریسک در چه نقطه‌ای منتقل می‌شود؟</b>
-""",
-
-    "c31": """
-<b>🚢 مبانی لجستیک تجارت</b>
-
-لجستیک تجارت به مدیریت جریان فیزیکی کالا و فعالیت‌هایی مانند:
-
-• حمل
-• انبارش
-• بسته‌بندی
-• جابه‌جایی
-• تحویل
-
-می‌پردازد.
-
-<b>🎯 هدف لجستیک</b>
-
-رساندن کالای درست:
-
-در زمان درست،
-
-به مکان درست،
-
-با هزینه و ریسک قابل‌قبول.
-
-<b>🧠 نکته</b>
-
-لجستیک مناسب باید بین هزینه، سرعت، کیفیت و قابلیت اطمینان تعادل ایجاد کند.
-""",
-
-    "c32": """
-<b>🚢 انتخاب شیوه حمل</b>
-
-روش‌های متداول حمل شامل:
-
-🚢 دریایی
-
-✈️ هوایی
-
-🚛 جاده‌ای
-
-🚆 ریلی
-
-و حمل ترکیبی هستند.
-
-<b>📌 معیارهای انتخاب</b>
-
-• نوع کالا
-• وزن
-• حجم
-• ارزش کالا
-• فوریت
-• مسیر
-• هزینه
-• زیرساخت
-• ریسک
-
-<b>💡 مثال</b>
-
-برای کالای حجیم و کم‌ارزش، حمل هوایی ممکن است اقتصادی نباشد.
-
-اما برای کالای بسیار حساس به زمان، سرعت حمل می‌تواند اهمیت بیشتری داشته باشد.
-""",
-
-    "c41": """
-<b>💳 روش‌های پرداخت بین‌المللی</b>
-
-در معاملات بین‌المللی روش پرداخت باید متناسب با:
-
-• میزان اعتماد طرفین
-• ریسک خریدار
-• ریسک فروشنده
-• ریسک کشور
-• هزینه بانکی
-• زمان دریافت وجه
-• اسناد موردنیاز
-
-انتخاب شود.
-
-<b>🎯 نکته</b>
-
-هیچ روش پرداختی برای تمام معاملات بهترین گزینه نیست.
-
-ساختار معامله تعیین می‌کند کدام روش مناسب‌تر است.
-""",
-
-    "c42": """
-<b>💳 اعتبار اسنادی</b>
-
-اعتبار اسنادی یا:
-
-<b>Letter of Credit / Documentary Credit</b>
-
-یک سازوکار بانکی در تجارت بین‌الملل است که در آن تعهد بانک در چارچوب شرایط اعتبار و ارائه اسناد منطبق اهمیت دارد.
-
-<b>⚠️ نکته مهم</b>
-
-بانک‌ها عمدتاً با اسناد سروکار دارند.
-
-بنابراین اعتبار اسنادی را نباید به معنی تضمین کیفیت فیزیکی کالا دانست.
-
-<b>📝 نکته آزمونی</b>
-
-مطابقت اسناد با شرایط اعتبار اهمیت اساسی دارد.
-""",
-
-    "c51": """
-<b>🏦 تأمین مالی تجارت</b>
-
-Trade Finance مجموعه‌ای از ابزارها و خدمات مالی برای پشتیبانی از جریان تجارت و زنجیره تأمین است.
-
-<b>🎯 اهداف</b>
-
-• تأمین سرمایه در گردش
-• مدیریت زمان پرداخت
-• مدیریت زمان دریافت
-• تسهیل معاملات
-• مدیریت برخی ریسک‌ها
-
-<b>🧠 نکته</b>
-
-ساختار تأمین مالی باید با چرخه تبدیل وجه نقد و ریسک معامله هماهنگ باشد.
-""",
-
-    "c52": """
-<b>🏦 ریسک تأمین مالی تجارت</b>
-
-برخی ریسک‌های مهم عبارت‌اند از:
-
-• ریسک اعتباری
-• ریسک ارزی
-• ریسک اسنادی
-• ریسک عملیاتی
-• ریسک کشوری
-• ریسک طرف معامله
-
-<b>🛡️ مدیریت ریسک</b>
-
-شناخت طرف معامله
-
-↓
-
-بررسی اسناد
-
-↓
-
-تعیین حدود اعتباری
-
-↓
-
-کنترل فرآیند
-
-↓
-
-پایش مستمر
-""",
-
-    "c61": """
-<b>📦 مراحل مقدماتی صادرات</b>
-
-یک فرآیند صادراتی می‌تواند شامل موارد زیر باشد:
-
-1️⃣ شناسایی بازار هدف
-
-2️⃣ بررسی مشتری
-
-3️⃣ بررسی مقررات مقصد
-
-4️⃣ قیمت‌گذاری
-
-5️⃣ مذاکره
-
-6️⃣ قرارداد
-
-7️⃣ آماده‌سازی کالا
-
-8️⃣ اسناد
-
-9️⃣ حمل
-
-🔟 دریافت وجه
-
-<b>⚠️ نکته</b>
-
-مقررات صادراتی وابسته به کشور، کالا و شرایط روز است.
-
-بنابراین اطلاعات عملیاتی باید از منابع رسمی و به‌روز بررسی شود.
-""",
-
-    "c71": """
-<b>📥 مراحل مقدماتی واردات</b>
-
-مراحل عمومی واردات می‌تواند شامل:
-
-• شناسایی نیاز
-• انتخاب تأمین‌کننده
-• بررسی مشخصات کالا
-• مذاکره
-• قرارداد
-• روش پرداخت
-• حمل
-• اسناد
-• تشریفات
-• ترخیص
-
-باشد.
-
-<b>💡 نکته مدیریتی</b>
-
-قیمت خرید به تنهایی معیار تصمیم نیست.
-
-باید هزینه نهایی واردات و ریسک زنجیره تأمین نیز محاسبه شود.
-""",
-
-    "c81": """
-<b>🧾 اسناد تجاری</b>
-
-در تجارت بین‌الملل اسنادی مانند:
-
-• فاکتور تجاری
-• فهرست بسته‌بندی
-• اسناد حمل
-• گواهی‌های موردنیاز
-• سایر اسناد قراردادی و مقرراتی
-
-اهمیت دارند.
-
-<b>⚠️ نکته</b>
-
-نوع اسناد موردنیاز به:
-
-• قرارداد
-• روش حمل
-• کشورها
-• بانک
-• نوع کالا
-• مقررات
-
-وابسته است.
-""",
-
-    "c91": """
-<b>⚠️ ریسک تجارت بین‌الملل</b>
-
-مهم‌ترین ریسک‌ها می‌توانند شامل:
-
-🔹 ریسک اعتباری
-
-🔹 ریسک ارزی
-
-🔹 ریسک سیاسی
-
-🔹 ریسک کشوری
-
-🔹 ریسک حمل
-
-🔹 ریسک اسنادی
-
-🔹 ریسک مقرراتی
-
-🔹 ریسک عملیاتی
-
-باشند.
-
-<b>🛡️ فرآیند مدیریت ریسک</b>
-
-شناسایی
-
-↓
-
-ارزیابی
-
-↓
-
-کنترل
-
-↓
-
-کاهش یا انتقال
-
-↓
-
-پایش
+دانش → تمرین → آزمون → مهارت
 """
-}
+
+    await query.edit_message_text(
+        text,
+        parse_mode=ParseMode.HTML,
+        reply_markup=commerce_menu(),
+    )
 
 
 # =========================================================
-# COMMERCE QUIZ
+# SHOW CATEGORY
 # =========================================================
 
-QUIZ = [
+async def show_category(
+    query,
+    key: str,
+):
 
-    {
-        "id": "cq1",
-        "lesson": "c01",
+    section = COMMERCE.get(key)
 
-        "question":
-        "کدام مجموعه تصویر کامل‌تری از یک معامله بین‌المللی می‌دهد؟",
+    if not section:
 
-        "options": [
-            "فقط قیمت کالا",
-            "کالا، پول، اطلاعات، اسناد و ریسک",
-            "فقط هزینه حمل",
-            "فقط نرخ ارز",
+        await query.edit_message_text(
+            "⚠️ بخش موردنظر پیدا نشد.",
+            reply_markup=commerce_menu(),
+        )
+
+        return
+
+    text = f"""
+<b>{section["title"]}</b>
+
+📚 درس‌های این بخش:
+
+یکی از درس‌ها را انتخاب کن.
+"""
+
+    await query.edit_message_text(
+        text,
+        parse_mode=ParseMode.HTML,
+        reply_markup=category_menu(key),
+    )
+
+
+# =========================================================
+# SHOW LESSON
+# =========================================================
+
+async def show_lesson(
+    query,
+    key: str,
+    lesson_id: str,
+):
+
+    section = COMMERCE.get(key)
+
+    if not section:
+
+        await query.edit_message_text(
+            "⚠️ دسته آموزشی پیدا نشد.",
+            reply_markup=commerce_menu(),
+        )
+
+        return
+
+    if lesson_id not in LESSONS:
+
+        await query.edit_message_text(
+            "⚠️ محتوای این درس پیدا نشد.",
+            reply_markup=category_menu(key),
+        )
+
+        return
+
+    text = LESSONS[lesson_id]
+
+    keyboard = [
+
+        [
+            InlineKeyboardButton(
+                "🎯 آزمون این بخش",
+                callback_data=f"comquiz:category:{key}",
+            )
         ],
 
-        "answer": 1,
-
-        "explanation":
-        "تجارت حرفه‌ای نیازمند مدیریت هم‌زمان کالا، پول، اطلاعات، اسناد و ریسک است.",
-    },
-
-    {
-        "id": "cq2",
-        "lesson": "c12",
-
-        "question":
-        "مبنای اصلی مزیت نسبی چیست؟",
-
-        "options": [
-            "جمعیت",
-            "هزینه فرصت",
-            "مساحت کشور",
-            "تعداد شرکت‌ها",
+        [
+            InlineKeyboardButton(
+                "⬅️ بازگشت به درس‌ها",
+                callback_data=f"comcat:{key}",
+            )
         ],
 
-        "answer": 1,
-
-        "explanation":
-        "مزیت نسبی بر مفهوم هزینه فرصت تمرکز دارد.",
-    },
-
-    {
-        "id": "cq3",
-        "lesson": "c21",
-
-        "question":
-        "اینکوترمز بیشتر برای چه موضوعی استفاده می‌شود؟",
-
-        "options": [
-            "برخی شروط تحویل و مسئولیت‌های معامله",
-            "تعیین نرخ ارز",
-            "تضمین کیفیت فیزیکی کالا",
-            "جایگزینی کامل قرارداد فروش",
+        [
+            InlineKeyboardButton(
+                "🌍 تجارت و بازرگانی",
+                callback_data="commerce",
+            )
         ],
 
-        "answer": 0,
+        [
+            InlineKeyboardButton(
+                "🏠 منوی اصلی",
+                callback_data="home",
+            )
+        ],
+    ]
 
-        "explanation":
-        "اینکوترمز قواعد استاندارد برای برخی اصطلاحات تجاری است و جایگزین قرارداد کامل فروش نیست.",
-    },
+    await query.edit_message_text(
+        text,
+        parse_mode=ParseMode.HTML,
+        reply_markup=InlineKeyboardMarkup(keyboard),
+    )
 
-    {
-        "id": "cq4",
-        "lesson": "c42",
 
-        "question":
-        "در اعتبار اسنادی چه چیزی اهمیت ویژه‌ای دارد؟",
+# =========================================================
+# GET QUESTIONS
+# =========================================================
 
-        "options": [
-            "مطابقت اسناد با شرایط اعتبار",
-            "رنگ بسته‌بندی",
-            "تعداد کارکنان شرکت",
-            "لوگوی فروشنده",
+def questions_for(key=None):
+
+    if key is None:
+        return QUIZ
+
+    section = COMMERCE.get(key)
+
+    if not section:
+        return []
+
+    lesson_ids = {
+        lesson_id
+        for _, lesson_id in section["lessons"]
+    }
+
+    return [
+        question
+        for question in QUIZ
+        if question["lesson"] in lesson_ids
+    ]
+
+
+# =========================================================
+# START QUIZ
+# =========================================================
+
+async def start_quiz(
+    query,
+    context,
+    key=None,
+):
+
+    questions = questions_for(key)
+
+    if not questions:
+
+        await query.edit_message_text(
+            """
+⚠️ هنوز سؤال کافی برای این بخش ثبت نشده است.
+
+به‌زودی مجموعه تست‌های این قسمت تکمیل خواهد شد.
+""",
+            reply_markup=commerce_menu(),
+        )
+
+        return
+
+    context.user_data["commerce_quiz"] = {
+
+        "questions": questions,
+
+        "index": 0,
+
+        "score": 0,
+
+        "category": key,
+
+    }
+
+    await send_question(
+        query,
+        context,
+    )
+
+
+# =========================================================
+# SEND QUESTION
+# =========================================================
+
+async def send_question(
+    query,
+    context,
+):
+
+    quiz = context.user_data.get(
+        "commerce_quiz"
+    )
+
+    if not quiz:
+
+        await query.edit_message_text(
+            "⚠️ آزمون فعالی وجود ندارد.",
+            reply_markup=commerce_menu(),
+        )
+
+        return
+
+    questions = quiz["questions"]
+
+    index = quiz["index"]
+
+    if index >= len(questions):
+
+        await finish_quiz(
+            query,
+            context,
+        )
+
+        return
+
+    question = questions[index]
+
+    keyboard = []
+
+    for option_index, option in enumerate(
+        question["options"]
+    ):
+
+        keyboard.append([
+            InlineKeyboardButton(
+                option,
+                callback_data=f"comans:{option_index}",
+            )
+        ])
+
+    keyboard.append([
+        InlineKeyboardButton(
+            "❌ خروج از آزمون",
+            callback_data="commerce",
+        )
+    ])
+
+    text = f"""
+<b>🎯 آزمون تجارت و بازرگانی</b>
+
+━━━━━━━━━━━━━━
+
+📌 سؤال:
+
+<b>{question["question"]}</b>
+
+━━━━━━━━━━━━━━
+
+📊 سؤال {index + 1} از {len(questions)}
+
+💡 یکی از گزینه‌ها را انتخاب کن.
+"""
+
+    await query.edit_message_text(
+        text,
+        parse_mode=ParseMode.HTML,
+        reply_markup=InlineKeyboardMarkup(keyboard),
+    )
+
+
+# =========================================================
+# ANSWER QUIZ
+# =========================================================
+
+async def answer_quiz(
+    query,
+    context,
+    answer_index,
+):
+
+    quiz = context.user_data.get(
+        "commerce_quiz"
+    )
+
+    if not quiz:
+
+        await query.edit_message_text(
+            "⚠️ آزمون فعال نیست.",
+            reply_markup=commerce_menu(),
+        )
+
+        return
+
+    try:
+
+        answer_index = int(
+            answer_index
+        )
+
+    except (TypeError, ValueError):
+
+        await query.answer(
+            "⚠️ پاسخ نامعتبر است.",
+            show_alert=True,
+        )
+
+        return
+
+    index = quiz["index"]
+
+    questions = quiz["questions"]
+
+    if index >= len(questions):
+
+        await finish_quiz(
+            query,
+            context,
+        )
+
+        return
+
+    question = questions[index]
+
+    if (
+        answer_index < 0
+        or answer_index >= len(
+            question["options"]
+        )
+    ):
+
+        await query.answer(
+            "⚠️ گزینه نامعتبر است.",
+            show_alert=True,
+        )
+
+        return
+
+    is_correct = (
+        answer_index
+        == question["answer"]
+    )
+
+    if is_correct:
+
+        quiz["score"] += 1
+
+        result_text = "✅ <b>پاسخ صحیح بود!</b>"
+
+    else:
+
+        correct_answer = question[
+            "options"
+        ][question["answer"]]
+
+        result_text = (
+            "❌ <b>پاسخ نادرست بود.</b>\n\n"
+            f"✅ پاسخ صحیح: <b>{correct_answer}</b>"
+        )
+
+    quiz["index"] += 1
+
+    if quiz["index"] >= len(questions):
+
+        total = len(questions)
+
+        score = quiz["score"]
+
+        percent = round(
+            (score / total) * 100
+        )
+
+        context.user_data[
+            "commerce_last_result"
+        ] = {
+
+            "score": score,
+
+            "total": total,
+
+            "percent": percent,
+
+        }
+
+        explanation = question.get(
+            "explanation",
+            "",
+        )
+
+        keyboard = [
+
+            [
+                InlineKeyboardButton(
+                    "🎯 آزمون دوباره",
+                    callback_data="comquiz:start",
+                )
+            ],
+
+            [
+                InlineKeyboardButton(
+                    "🌍 تجارت و بازرگانی",
+                    callback_data="commerce",
+                )
+            ],
+
+            [
+                InlineKeyboardButton(
+                    "🏠 منوی اصلی",
+                    callback_data="home",
+                )
+            ],
+
+        ]
+
+        text = f"""
+<b>🏁 آزمون به پایان رسید</b>
+
+━━━━━━━━━━━━━━
+
+{result_text}
+
+━━━━━━━━━━━━━━
+
+🏆 امتیاز:
+<b>{score} از {total}</b>
+
+📊 درصد:
+<b>{percent}%</b>
+
+━━━━━━━━━━━━━━
+
+💡 <b>تحلیل پاسخ آخر:</b>
+
+{explanation}
+"""
+
+        context.user_data.pop(
+            "commerce_quiz",
+            None,
+        )
+
+        await query.edit_message_text(
+            text,
+            parse_mode=ParseMode.HTML,
+            reply_markup=InlineKeyboardMarkup(
+                keyboard
+            ),
+        )
+
+        return
+
+    # ادامه آزمون
+
+    await query.answer(
+        "پاسخ ثبت شد ✅"
+    )
+
+    await send_question(
+        query,
+        context,
+    )
+
+
+# =========================================================
+# FINISH QUIZ
+# =========================================================
+
+async def finish_quiz(
+    query,
+    context,
+):
+
+    quiz = context.user_data.get(
+        "commerce_quiz"
+    )
+
+    if not quiz:
+
+        await query.edit_message_text(
+            "⚠️ آزمون فعالی وجود ندارد.",
+            reply_markup=commerce_menu(),
+        )
+
+        return
+
+    total = len(
+        quiz["questions"]
+    )
+
+    score = quiz["score"]
+
+    percent = round(
+        (score / total) * 100
+    ) if total else 0
+
+    context.user_data[
+        "commerce_last_result"
+    ] = {
+
+        "score": score,
+
+        "total": total,
+
+        "percent": percent,
+
+    }
+
+    context.user_data.pop(
+        "commerce_quiz",
+        None,
+    )
+
+    keyboard = InlineKeyboardMarkup([
+
+        [
+            InlineKeyboardButton(
+                "🎯 آزمون دوباره",
+                callback_data="comquiz:start",
+            )
         ],
 
-        "answer": 0,
-
-        "explanation":
-        "در اعتبار اسنادی، بررسی اسناد و انطباق آن‌ها با شرایط اعتبار اهمیت اساسی دارد.",
-    },
-
-    {
-        "id": "cq5",
-        "lesson": "c91",
-
-        "question":
-        "کدام مورد یک ریسک تجارت بین‌الملل است؟",
-
-        "options": [
-            "ریسک ارزی",
-            "رنگ لوگو",
-            "فونت قرارداد",
-            "تعداد صفحات کاتالوگ",
+        [
+            InlineKeyboardButton(
+                "🌍 تجارت و بازرگانی",
+                callback_data="commerce",
+            )
         ],
 
-        "answer": 0,
+        [
+            InlineKeyboardButton(
+                "🏠 منوی اصلی",
+                callback_data="home",
+            )
+        ],
 
-        "explanation":
-        "نوسانات نرخ ارز می‌تواند بر ارزش و سودآوری معامله اثر بگذارد.",
-    },
-]
+    ])
+
+    text = f"""
+<b>🏁 آزمون پایان یافت</b>
+
+🏆 امتیاز:
+<b>{score} از {total}</b>
+
+📊 درصد:
+<b>{percent}%</b>
+"""
+
+    await query.edit_message_text(
+        text,
+        parse_mode=ParseMode.HTML,
+        reply_markup=keyboard,
+    )
